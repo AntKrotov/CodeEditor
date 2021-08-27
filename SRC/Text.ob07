@@ -1202,75 +1202,75 @@ BEGIN
 END enter;
 
 
+PROCEDURE incIndent (line: tLine);
+VAR
+	c: WCHAR;
+	i: INTEGER;
+BEGIN
+	Lines.modify(line);
+	Lines.insert3(line, 0, Lines.tab);
+	IF Lines.tabs THEN
+		c := TAB1
+	ELSE
+		c := SPACE
+	END;
+	i := Lines.tab - 1;
+	WHILE i >= 0 DO
+		Lines.setChar(line, i, c);
+		DEC(i)
+	END;
+	IF Lines.tabs THEN
+		Lines.setChar(line, 0, TAB)
+	END
+END incIndent;
+
+
+PROCEDURE decIndent (line: tLine): BOOLEAN;
+VAR
+	n: INTEGER;
+BEGIN
+	n := leadingSpaces(line);
+	IF n > 0 THEN
+		Lines.delCharN(line, 0, MIN(Lines.tab, n));
+		Lines.modify(line)
+	END
+	RETURN n > 0
+END decIndent;
+
+
+PROCEDURE Indent* (text: tText; incr: BOOLEAN);
+VAR
+    i: INTEGER;
+    line: tLine;
+    selBeg, selEnd: tPoint;
+    modified: BOOLEAN;
+BEGIN
+	getSelect(text, selBeg, selEnd);
+	i := selEnd.Y - selBeg.Y + 1;
+	line := getLine(text, selBeg.Y);
+	modified := incr;
+	WHILE i > 0 DO
+		IF incr THEN
+			incIndent(line)
+		ELSE
+    		modified := decIndent(line) OR modified
+		END;
+		NextLine(line);
+		DEC(i)
+	END;
+	line := getLine(text, selEnd.Y);
+	text.select^ := selBeg;
+	text.select.X := 0;
+	SetPos(text, line.length, selEnd.Y);
+	IF modified THEN
+   		modify(text)
+	END
+END Indent;
+
+
 PROCEDURE input* (text: tText; code: INTEGER);
 VAR
     curLine: tLine;
-
-
-	PROCEDURE incIndent (line: tLine);
-	VAR
-		c: WCHAR;
-		i: INTEGER;
-	BEGIN
-		Lines.modify(line);
-		Lines.insert3(line, 0, Lines.tab);
-		IF Lines.tabs THEN
-			c := TAB1
-		ELSE
-			c := SPACE
-		END;
-		i := Lines.tab - 1;
-		WHILE i >= 0 DO
-			Lines.setChar(line, i, c);
-			DEC(i)
-		END;
-		IF Lines.tabs THEN
-			Lines.setChar(line, 0, TAB)
-		END
-	END incIndent;
-
-
-	PROCEDURE decIndent (line: tLine): BOOLEAN;
-	VAR
-		n: INTEGER;
-	BEGIN
-		n := leadingSpaces(line);
-		IF n > 0 THEN
-			Lines.delCharN(line, 0, MIN(Lines.tab, n));
-			Lines.modify(line)
-		END
-		RETURN n > 0
-	END decIndent;
-
-
-	PROCEDURE Indent (text: tText; incr: BOOLEAN);
-    VAR
-        i: INTEGER;
-        line: tLine;
-        selBeg, selEnd: tPoint;
-        modified: BOOLEAN;
-	BEGIN
-   		getSelect(text, selBeg, selEnd);
-   		i := selEnd.Y - selBeg.Y + 1;
-   		line := getLine(text, selBeg.Y);
-   		modified := incr;
-   		WHILE i > 0 DO
-   			IF incr THEN
-    			incIndent(line)
-   			ELSE
-	    		modified := decIndent(line) OR modified
-    		END;
-    		NextLine(line);
-   			DEC(i)
-   		END;
-   		line := getLine(text, selEnd.Y);
-   		text.select^ := selBeg;
-   		text.select.X := 0;
-   		SetPos(text, line.length, selEnd.Y);
-   		IF modified THEN
-	   		modify(text)
-   		END
-	END Indent;
 
 
     PROCEDURE tab (text: tText);
@@ -1743,7 +1743,7 @@ BEGIN
 END delLine;
 
 
-PROCEDURE dupLine (text: tText);
+PROCEDURE dupLine* (text: tText);
 VAR
     newLine, curLine: tLine;
 BEGIN
@@ -1766,8 +1766,9 @@ BEGIN
 END exchange;
 
 
-PROCEDURE upLine (text: tText);
+PROCEDURE upLine* (text: tText);
 BEGIN
+	resetSelect(text);
     IF text.cursor.Y > 0 THEN
         DEC(text.cursor.Y);
         exchange(text, text.curLine.prev(tLine), text.curLine)
@@ -1775,8 +1776,9 @@ BEGIN
 END upLine;
 
 
-PROCEDURE downLine (text: tText);
+PROCEDURE downLine* (text: tText);
 BEGIN
+	resetSelect(text);
     IF text.cursor.Y < text.count - 1 THEN
         INC(text.cursor.Y);
         exchange(text, text.curLine, text.curLine.next(tLine))
@@ -1923,7 +1925,11 @@ BEGIN
         END
     |ORD("L"), ORD("U"):
         IF ctrl THEN
-            changeCase(text, code = ORD("U"));
+        	IF selected(text) THEN
+            	chCase(text, code = ORD("U"))
+            ELSE
+            	changeCase(text, code = ORD("U"))
+            END;
             ShowCursor
         END
     |ORD("D"):
