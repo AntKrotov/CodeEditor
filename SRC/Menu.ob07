@@ -30,6 +30,8 @@ CONST
     LEFT = 16;
     TOP = 1;
 
+    maxLEVEL = 1;
+
     backColor = 0F0F0F0H;
     foreColor = 0;
     selBackColor = 091C9F7H;
@@ -69,10 +71,22 @@ TYPE
     tProc = PROCEDURE;
 
 VAR
-    stack: ARRAY 2, 250000 OF INTEGER;
+    stack: ARRAY maxLEVEL + 1, 250000 OF INTEGER;
+    TIDs: ARRAY maxLEVEL + 1 OF INTEGER;
     resetTimer: tProc;
-
     _open: PROCEDURE (m: tMenu; x, y: INTEGER);
+
+
+PROCEDURE isSender* (tid: INTEGER): BOOLEAN;
+VAR
+	i: INTEGER;
+BEGIN
+	i := 0;
+	WHILE (i <= maxLEVEL) & (TIDs[i] # tid) DO
+		INC(i)
+	END
+	RETURN i <= maxLEVEL
+END isSender;
 
 
 PROCEDURE exit (m: tMenu);
@@ -331,7 +345,8 @@ BEGIN
         m.winY := y;
         L := level(m);
         SYSTEM.PUT(SYSTEM.ADR(stack[L][LEN(stack[0]) - 1]), m);
-        m.tid := K.CreateThread(SYSTEM.ADR(window), stack[L])
+        m.tid := K.CreateThread(SYSTEM.ADR(window), stack[L]);
+        TIDs[L] := m.tid
     END
 END open;
 
@@ -435,9 +450,14 @@ END create;
 
 
 PROCEDURE init* (_resetTimer: tProc);
+VAR
+	i: INTEGER;
 BEGIN
 	resetTimer := _resetTimer;
-	_open := open
+	_open := open;
+	FOR i := 0 TO maxLEVEL DO
+		TIDs[i] := 0
+	END
 END init;
 
 

@@ -204,7 +204,8 @@ VAR
 
     mainTID: INTEGER;
 
-    context, menuFile, menuEdit, menuSearch, menuEncoding, menuView, menuSyntax, menuProgram, menuTools,
+    context, menuFile, menuEdit, menuSearch, menuEncoding,
+    menuView, menuSyntax, menuProgram, menuTools,
     subCurLine, subIndent, subCase, subBookmark: Menu.tMenu;
 
     icons: INTEGER;
@@ -1245,6 +1246,8 @@ BEGIN
     	T.toggleCursor;
     	repaint;
     	IPC[2] := 0
+    ELSIF ~Menu.isSender(IPC[0]) THEN
+   		IPC[2] := 0
     END;
     CASE IPC[2] OF
     |0:
