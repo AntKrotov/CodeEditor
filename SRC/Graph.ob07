@@ -27,6 +27,11 @@ CONST
     modeNOT  = 1;
     modeXOR  = 2;
 
+    triUp* = FALSE;
+    triDown* = TRUE;
+    triLeft* = FALSE;
+    triRight* = TRUE;
+
 TYPE
 
     tFont* = POINTER TO RECORD
@@ -175,6 +180,35 @@ BEGIN
         INC(x1)
     END
 END DLine;
+
+
+PROCEDURE Triangle* (canvas: tCanvas; x1, y1, x2, y2: INTEGER; orientation: BOOLEAN);
+VAR
+	i, a, b, d: INTEGER;
+BEGIN
+	d := ORD(orientation)*2 - 1;
+	IF y1 = y2 THEN
+		i := y1;
+		a := MIN(x1, x2);
+		b := MAX(x1, x2);
+		WHILE a <= b DO
+			HLine(canvas, i, a, b);
+			INC(i, d);
+			INC(a);
+			DEC(b)
+		END
+	ELSIF x1 = x2 THEN
+		i := x1;
+		a := MIN(y1, y2);
+		b := MAX(y1, y2);
+		WHILE a <= b DO
+			VLine(canvas, i, a, b);
+			INC(i, d);
+			INC(a);
+			DEC(b)
+		END
+	END
+END Triangle;
 
 
 PROCEDURE FillRect* (canvas: tCanvas; left, top, right, bottom: INTEGER);

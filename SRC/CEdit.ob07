@@ -28,7 +28,7 @@ IMPORT
     RW, Ini, box_lib, Icons, Tabs, Timer;
 
 CONST
-    header = "CEdit (28-aug-2021)";
+    header = "CEdit (02-sep-2021)";
 
     ShellFilter = "";
     EditFilter = "SH|ASM|TXT|INC|OB07|C|CPP|H|PAS|PP|LUA|INI|JSON";
@@ -48,10 +48,7 @@ CONST
     btnLower = 27;
     btnBuild = 28;
     btnRun = 29;
-    btnUp = 30;
-    btnDown = 31;
-    btnLeft = 32;
-    btnRight = 33;
+
     btnYes = 40;
     btnNo = 41;
     btnFindNext = 60;
@@ -173,6 +170,7 @@ CONST
     menuPrevBookmark = 133;
 
     maxTexts = 32;
+    scrollDelay = 40;
 
 
 VAR
@@ -190,8 +188,8 @@ VAR
     confirm, notFound, search, searchOpened, modified: BOOLEAN;
 
     switch, closing: BOOLEAN;
-    leftButton, VScroll, HScroll: BOOLEAN;
-    vScroll, hScroll: Scroll.tScroll;
+    leftButton: BOOLEAN;
+    hScroll, vScroll: Scroll.tScroll;
     LEFT: INTEGER;
 
     FindEdit, ReplaceEdit, GotoEdit: box_lib.edit_box;
@@ -202,7 +200,7 @@ VAR
 
     replaced: INTEGER;
 
-    mainTID: INTEGER;
+    mainTID, delay: INTEGER;
 
     context, menuFile, menuEdit, menuSearch, menuEncoding,
     menuView, menuSyntax, menuProgram, menuTools,
@@ -410,6 +408,16 @@ BEGIN
 END DrawState;
 
 
+PROCEDURE DrawScroll (VAR scroll: Scroll.tScroll; left, top, value, maxVal: INTEGER);
+BEGIN
+	scroll.maxVal := maxVal;
+    scroll.left := left;
+    scroll.top := top;
+    Scroll.setValue(scroll, value);
+    Scroll.paint(scroll)
+END DrawScroll;
+
+
 PROCEDURE repaint;
 VAR
     width, height, scrollX, scrollY, y: INTEGER;
@@ -442,10 +450,8 @@ BEGIN
         END;
 
         T.getScroll(text, scrollX, scrollY);
-        vScroll.value := scrollY; vScroll.maxVal := text.count - 1;
-        hScroll.value := scrollX; hScroll.maxVal := text.maxLength;
-        Scroll.draw(vScroll, LEFT + canvas.width - 1, TOP + scrollWidth - 1);
-        Scroll.draw(hScroll, LEFT + scrollWidth, TOP + canvas.height - 1);
+        DrawScroll(vScroll, LEFT + canvas.width - 1, TOP - 1, scrollY, text.count - 1);
+        DrawScroll(hScroll, LEFT, TOP + canvas.height - 1, scrollX, text.maxLength);
 
         G.DrawCanvas(canvas, LEFT, TOP);
         NotFound;
@@ -475,8 +481,8 @@ BEGIN
     G.SetFont(canvas, font);
     T.setCanvas(canvas);
     T.resize(canvas.width, canvas.height);
-    Scroll.resize(vScroll, vScroll.xSize, canvas.height - scrollWidth*2 + 2);
-    Scroll.resize(hScroll, canvas.width - scrollWidth*2, hScroll.ySize);
+    Scroll.resize(vScroll, vScroll.width, canvas.height + 1);
+    Scroll.resize(hScroll, canvas.width, hScroll.height);
 END resize;
 
 
@@ -623,19 +629,6 @@ BEGIN
         INC(x, toolBtnSize + 5);
 
         toolbarIcons;
-
-        K.CreateButton(btnUp, LEFT + canvas.width - 1, TOP - 1, scrollWidth - 1, scrollWidth, K.btnColor, 0X);
-        K.DrawText69(LEFT + canvas.width - 1 + (scrollWidth - 6) DIV 2, TOP + (scrollWidth - 9) DIV 2, K.btnTextColor, 18X);
-        K.CreateButton(btnDown, LEFT + canvas.width - 1, TOP + canvas.height - scrollWidth - 1, scrollWidth - 1, scrollWidth, K.btnColor, 0X);
-        K.DrawText69(LEFT + canvas.width - 1 + (scrollWidth - 6) DIV 2, TOP + canvas.height - scrollWidth + (scrollWidth - 9) DIV 2, K.btnTextColor, 19X);
-
-        K.CreateButton(btnLeft, LEFT, TOP + canvas.height - 1, scrollWidth, scrollWidth - 1, K.btnColor, 0X);
-        K.DrawText69(LEFT + (scrollWidth - 6) DIV 2, TOP + canvas.height - 1 + (scrollWidth - 9) DIV 2 + 1, K.btnTextColor, 1BX);
-        K.CreateButton(btnRight, LEFT + canvas.width - scrollWidth - 1, TOP + canvas.height - 1, scrollWidth, scrollWidth - 1, K.btnColor, 0X);
-        K.DrawText69(LEFT + canvas.width - scrollWidth - 1 + (scrollWidth - 6) DIV 2, TOP + canvas.height - 1 + (scrollWidth - 9) DIV 2 + 1, K.btnTextColor, 1AX);
-
-        K.PutPixel(LEFT + canvas.width + scrollWidth - 2, TOP - 1, K.winColor);
-        K.PutPixel(LEFT, TOP + canvas.height + scrollWidth - 2, K.winColor);
 
         DrawState(text, width, height);
         IF search & searchOpened THEN
@@ -1021,6 +1014,18 @@ VAR
     shift, ctrl: BOOLEAN;
 BEGIN
     getKBState(shift, ctrl);
+    IF ~hScroll.mouse THEN
+    	Scroll.MouseDown(hScroll, x + LEFT, y + TOP);
+        T.getScroll(text, scrollX, scrollY);
+        T.scroll(text, hScroll.value - scrollX, 0);
+        repaint
+    END;
+    IF ~vScroll.mouse THEN
+    	Scroll.MouseDown(vScroll, x + LEFT, y + TOP);
+        T.getScroll(text, scrollX, scrollY);
+        T.scroll(text, 0, vScroll.value - scrollY);
+        repaint
+    END;
     IF (0 <= x) & (x < canvas.width) & (0 <= y) & (y < canvas.height) THEN
         leftButton := TRUE;
         SetFocus(FindEdit, FALSE);
@@ -1028,18 +1033,6 @@ BEGIN
             T.resetSelect(text)
         END;
         T.mouse(text, x, y);
-        repaint
-    ELSIF (canvas.width < x) & (x < canvas.width + scrollWidth) & (scrollWidth < y) & (y < canvas.height - scrollWidth) THEN
-        VScroll := TRUE;
-        Scroll.mouse(vScroll, x - canvas.width, y - scrollWidth);
-        T.getScroll(text, scrollX, scrollY);
-        T.scroll(text, 0, vScroll.value - scrollY);
-        repaint
-    ELSIF (scrollWidth < x) & (x < canvas.width - scrollWidth) & (canvas.height < y) & (y < canvas.height + scrollWidth) THEN
-        HScroll := TRUE;
-        Scroll.mouse(hScroll, x - scrollWidth, y - canvas.height);
-        T.getScroll(text, scrollX, scrollY);
-        T.scroll(text, hScroll.value - scrollX, 0);
         repaint
     END
     RETURN K.GetTickCount()
@@ -1049,10 +1042,8 @@ END click;
 PROCEDURE LeftButtonUp;
 BEGIN
     leftButton := FALSE;
-    VScroll := FALSE;
-    HScroll := FALSE;
-    Scroll.MouseUp(vScroll);
     Scroll.MouseUp(hScroll);
+    Scroll.MouseUp(vScroll)
 END LeftButtonUp;
 
 
@@ -1241,10 +1232,49 @@ END ShowMenu;
 
 
 PROCEDURE receiveIPC;
+VAR
+	scrollIPC: BOOLEAN;
 BEGIN
+	scrollIPC := FALSE;
+
     IF IPC[0] = Timer.ID THEN
     	T.toggleCursor;
     	repaint;
+    	IPC[2] := 0
+    ELSIF IPC[0] = mainTID THEN
+    	IF IPC[2] = Scroll.ScrollIPC THEN
+	    	Scroll.change(hScroll);
+	    	IF hScroll.Dec THEN
+	    		T.scroll(text, -1, 0)
+	    	ELSIF hScroll.Inc THEN
+				T.scroll(text, 1, 0)
+	    	END;
+	    	Scroll.change(vScroll);
+	    	IF vScroll.Dec THEN
+	    		T.scroll(text, 0, -1)
+	    	ELSIF vScroll.Inc THEN
+				T.scroll(text, 0, 1)
+	    	END;
+        	repaint;
+
+    		IF (0 IN K.MouseState()) THEN
+    			WHILE (0 IN K.MouseState()) & (delay > 0) DO
+        			K.Pause(1);
+    	    		DEC(delay)
+        		END;
+        		IF delay = 0 THEN
+    				IPC[0] := 0;
+					IPC[1] := 0;
+					scrollIPC := TRUE;
+	        		Scroll.SendIPC;
+    	    		delay := 2
+        		ELSE
+        			delay := scrollDelay
+        		END
+        	ELSE
+        		delay := scrollDelay
+			END
+    	END;
     	IPC[2] := 0
     ELSIF ~Menu.isSender(IPC[0]) THEN
    		IPC[2] := 0
@@ -1368,8 +1398,10 @@ BEGIN
 	|menuLower:
 		T.chCase(text, FALSE)
     END;
-    IPC[0] := 0;
-    IPC[1] := 0
+    IF ~scrollIPC THEN
+    	IPC[0] := 0;
+    	IPC[1] := 0
+    END
 END receiveIPC;
 
 
@@ -1853,18 +1885,6 @@ BEGIN
         Script(buildScript)
     |btnRun:
         Script(runScript)
-    |btnUp:
-        T.scroll(text, 0, -1);
-        repaint
-    |btnDown:
-        T.scroll(text, 0, 1);
-        repaint
-    |btnLeft:
-        T.scroll(text, -1, 0);
-        repaint
-    |btnRight:
-        T.scroll(text, 1, 0);
-        repaint
     |btnFindNext:
         IF searchText # "" THEN
             notFound := ~T.findNext(text, box_lib.check_box_get_value(BKW));
@@ -1926,20 +1946,20 @@ BEGIN
                 repaint
             END
         END;
-        IF VScroll THEN
-            mouse(x, y);
-            Scroll.mouse(vScroll, x, y - scrollWidth);
-            T.getScroll(text, scrollX, scrollY);
-            T.scroll(text, 0, vScroll.value - scrollY);
-            repaint
-        END;
-        IF HScroll THEN
-            mouse(x, y);
-            Scroll.mouse(hScroll, x - scrollWidth, y);
+		IF Scroll.isActive(hScroll) THEN
+			mouse(x, y);
+			Scroll.MouseMove(hScroll, x + LEFT, y + TOP);
             T.getScroll(text, scrollX, scrollY);
             T.scroll(text, hScroll.value - scrollX, 0);
-            repaint
-        END;
+			repaint
+		END;
+		IF Scroll.isActive(vScroll) THEN
+			mouse(x, y);
+			Scroll.MouseMove(vScroll, x + LEFT, y + TOP);
+            T.getScroll(text, scrollX, scrollY);
+            T.scroll(text, 0, vScroll.value - scrollY);
+			repaint
+		END;
         IF (8 IN msState) & ~(24 IN msState) THEN
             mouse(firstClickX, firstClickY);
             time := click(firstClickX, firstClickY)
@@ -1949,9 +1969,13 @@ BEGIN
         END;
         IF 24 IN msState THEN
             mouse(x, y);
+    		IF ~hScroll.mouse THEN
+    			Scroll.MouseDown(hScroll, x + LEFT, y + TOP)
+    		END;
+    		IF ~vScroll.mouse THEN
+    			Scroll.MouseDown(vScroll, x + LEFT, y + TOP)
+    		END;
             IF (ABS(x - firstClickX) < 5) & (ABS(y - firstClickY) < 5) THEN
-                VScroll := FALSE;
-                HScroll := FALSE;
                 IF (0 <= x) & (x < canvas.width) & (0 <= y) & (y < canvas.height) THEN
                     leftButton := FALSE;
                     T.selectWord(text);
@@ -2017,6 +2041,7 @@ VAR
     resized: BOOLEAN;
     firstClickX, firstClickY, time: INTEGER;
 BEGIN
+	delay := scrollDelay;
     K.GetSystemColors;
     Icons.get(icons, grayIcons);
     modified := FALSE;
@@ -2081,9 +2106,8 @@ BEGIN
     END;
     OD := OpenDlg.Create(draw_window, OpenDlg.topen, filePath, "");
     insert(0, text);
-
-    vScroll := Scroll.create(scrollWidth, canvas.height - scrollWidth*2 + 2);
-    hScroll := Scroll.create(canvas.width - scrollWidth*2, scrollWidth);
+    Scroll.create(FALSE, canvas.width, scrollWidth, scrollWidth, scrollWidth, hScroll);
+    Scroll.create(TRUE, scrollWidth, canvas.height, scrollWidth, scrollWidth, vScroll);
     T.resize(canvas.width, canvas.height);
     T.SetPos(text, 0, 0);
     confirm := FALSE;
@@ -2113,7 +2137,6 @@ BEGIN
         |3: BtnClick
         |6: MouseEvent(resized, firstClickX, firstClickY, time)
         |7: receiveIPC
-        ELSE
         END
     END
 END main;

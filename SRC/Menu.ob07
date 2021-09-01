@@ -153,12 +153,7 @@ BEGIN
             X := m.width - 9;
             Y1 := y + (fontHeight - 16) DIV 2 + 2;
             Y2 := Y1 + 8;
-            WHILE Y1 <= Y2 DO
-            	G.VLine(canvas, X, Y1, Y2);
-            	INC(X);
-            	INC(Y1);
-            	DEC(Y2);
-            END
+        	G.Triangle(canvas, X, Y1, X, Y2, G.triRight)
         END;
 
         INC(y, fontHeight);
