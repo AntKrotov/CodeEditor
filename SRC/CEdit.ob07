@@ -2180,13 +2180,7 @@ BEGIN
     Timer.create(mainTID);
     WHILE TRUE DO
         CASE K.WaitForEvent() OF
-        |1: (*IF Menu.redraw THEN*)
-       			Redraw(resized, width, height, cliWidth, cliHeight)
-        	(*ELSE
-        		Menu.Redraw;
-        		K.CreateWindow(30 + K.GetTickCount() MOD 128, 30 + K.GetTickCount() MOD 128, winWidth, winHeight, K.winColor, 73H, 0, 0, header);
-        		repaint
-        	END*)
+        |1:	Redraw(resized, width, height, cliWidth, cliHeight)
         |2: KeyDown(K.GetKey())
         |3: BtnClick
         |6: MouseEvent(resized, firstClickX, firstClickY, time)
