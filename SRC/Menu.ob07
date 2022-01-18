@@ -65,7 +65,6 @@ TYPE
         canvas: G.tCanvas;
 
         items: List.tList;
-        click: PROCEDURE (menu: tMenu; id: INTEGER);
         key: PROCEDURE (menu: tMenu; key: INTEGER): BOOLEAN
     END;
 
@@ -88,6 +87,7 @@ TYPE
     tProc = PROCEDURE;
 
 VAR
+	MenuItem*: INTEGER;
     stack: ARRAY maxLEVEL + 1, 2500 OF INTEGER;
     TIDs: ARRAY maxLEVEL + 1 OF INTEGER;
     resetTimer: tProc;
@@ -322,6 +322,12 @@ BEGIN
 END close;
 
 
+PROCEDURE SetItem* (id: INTEGER);
+BEGIN
+	MenuItem := id
+END SetItem;
+
+
 PROCEDURE click (m: tMenu; i: INTEGER);
 VAR
     item: List.tItem;
@@ -338,7 +344,7 @@ BEGIN
 	    END
     END;
     IF id # -1 THEN
-	    m.click(m, id);
+    	SetItem(id);
 	    p := m.parent;
 	   	WHILE p # NIL DO
 	   		p.child := NIL;
@@ -593,7 +599,7 @@ BEGIN
 END isEnabled;
 
 
-PROCEDURE create* (items: List.tList; click: tClick; key: tKey): tMenu;
+PROCEDURE create* (items: List.tList; key: tKey): tMenu;
 VAR
     m: tMenu;
     maxLength: INTEGER;
@@ -606,7 +612,6 @@ BEGIN
     m.child := NIL;
     m.mainID := 0;
     m.items  := items;
-    m.click := click;
     m.key := key;
     maxLength := 0;
     item := items.first(tItem);
@@ -627,6 +632,7 @@ PROCEDURE init* (_resetTimer: tProc);
 VAR
 	i: INTEGER;
 BEGIN
+	SetItem(0);
 	resetTimer := _resetTimer;
 	_open := open;
 	FOR i := 0 TO maxLEVEL DO
