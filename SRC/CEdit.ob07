@@ -169,6 +169,9 @@ CONST
 
     maxTexts = 32;
 
+	SHIFT = Menu.SHIFT;
+	CTRL  = Menu.CTRL;
+
 
 VAR
 	header: RW.tFileName;
@@ -1242,66 +1245,6 @@ BEGIN
 END ClickMenu;
 
 
-PROCEDURE MenuKeyDown (menu: Menu.tMenu; key: INTEGER): BOOLEAN;
-VAR
-    menuItem: INTEGER;
-    shift, ctrl: BOOLEAN;
-BEGIN
-    menuItem := 0;
-    K.getKBState(shift, ctrl);
-    IF ctrl THEN
-        CASE key DIV 65536 OF
-        |17: menuItem := menuClose
-        |21: menuItem := menuRedo
-        |30: menuItem := menuSelectAll
-        |32: menuItem := menuDuplicate
-        |33,
-         35: menuItem := menuFind
-        |34: menuItem := menuGoto
-        |44: menuItem := menuUndo
-        |45: menuItem := menuCut
-        |46: menuItem := menuCopy
-        |47: menuItem := menuPaste
-        |24: menuItem := menuOpen
-        |31: menuItem := menuSave
-        |49: menuItem := menuNew
-        |67: menuItem := menuBuild
-        |83: menuItem := menuRemove
-        |22: menuItem := menuUpper
-        |38: menuItem := menuLower
-        |60: menuItem := menuToggleBookmark
-        |72: menuItem := menuMoveUp
-        |80: menuItem := menuMoveDown
-        ELSE
-        END
-    ELSE
-        IF key DIV 65536 = 83 THEN
-            menuItem := menuDelete
-        ELSIF key DIV 65536 = 67 THEN
-            menuItem := menuRun
-        ELSIF key DIV 65536 = 15 THEN
-            menuItem := menuIncInd
-        ELSIF (key DIV 65536 = 14) & shift THEN
-            menuItem := menuDecInd
-        ELSIF key DIV 65536 = 60 THEN
-        	IF shift THEN
-        		menuItem := menuPrevBookmark
-        	ELSE
-        		menuItem := menuNextBookmark
-        	END
-        END
-    END;
-    IF menuItem # 0 THEN
-        IF Menu.isEnabled(menu, menuItem) THEN
-        	Menu.SetItem(menuItem)
-        ELSE
-            menuItem := 0
-        END
-    END
-    RETURN menuItem # 0
-END MenuKeyDown;
-
-
 PROCEDURE CreateContextMenu (): Menu.tMenu;
 VAR
     menu: List.tList;
@@ -1316,7 +1259,7 @@ BEGIN
     Menu.AddMenuItem(menu, menuDelete,    "delete");
     Menu.delimiter(menu);
     Menu.AddMenuItem(menu, menuSelectAll, "select all   ctrl-A");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateContextMenu;
 
 
@@ -1335,7 +1278,7 @@ BEGIN
     Menu.AddMenuItem(menu, menuClose,   "close       ctrl-W");
     Menu.delimiter(menu);
     Menu.AddMenuItem(menu, menuExit,    "exit");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuFile;
 
 
@@ -1360,7 +1303,7 @@ BEGIN
     Menu.child(menu, subIndent);
     Menu.AddMenuItem(menu, menuCase,      "case");
     Menu.child(menu, subCase);
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuEdit;
 
 
@@ -1376,7 +1319,7 @@ BEGIN
     Menu.delimiter(menu);
     Menu.AddMenuItem(menu, menuBookmark, "bookmark");
     Menu.child(menu, subBookmark);
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuSearch;
 
 
@@ -1392,7 +1335,7 @@ BEGIN
     Menu.delimiter(menu);
     Menu.AddMenuItem(menu, menuEOL,     "EOL");
     Menu.child(menu, subEOL);
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuEncoding;
 
 
@@ -1404,7 +1347,7 @@ BEGIN
     Menu.AddMenuItem(menu, menuCRLF, RW.eolNames[RW.EOL_CRLF]);
     Menu.AddMenuItem(menu, menuLF,   RW.eolNames[RW.EOL_LF]);
     Menu.AddMenuItem(menu, menuCR,   RW.eolNames[RW.EOL_CR]);
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuEOL;
 
 
@@ -1427,7 +1370,7 @@ BEGIN
         colors := colors.next(Ini.tSection)
     END;
 
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuView;
 
 
@@ -1445,7 +1388,7 @@ BEGIN
     Menu.AddMenuItem(menu, menuPascal, "Pascal");
     Menu.delimiter(menu);
     Menu.AddMenuItem(menu, menuText,   "Text");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuLanguage;
 
 
@@ -1462,7 +1405,7 @@ BEGIN
     Menu.delimiter(menu);
     Menu.AddMenuItem(menu, menuDebug,       "debug");
     Menu.AddMenuItem(menu, menuDebugScript, "script");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuProgram;
 
 
@@ -1475,7 +1418,7 @@ BEGIN
     Menu.AddMenuItem(menu, menuMagnify, "magnify");
     Menu.AddMenuItem(menu, menuBoard,   "board");
     Menu.AddMenuItem(menu, menuSysFunc, "system functions");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuTools;
 
 
@@ -1488,7 +1431,7 @@ BEGIN
     Menu.AddMenuItem(menu, menuMoveDown,  "move down   ctrl-Down");
     Menu.AddMenuItem(menu, menuDuplicate, "duplicate   ctrl-D");
     Menu.AddMenuItem(menu, menuRemove,    "remove      ctrl-Del");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuCurLine;
 
 
@@ -1499,7 +1442,7 @@ BEGIN
     menu := List.create(NIL);
     Menu.AddMenuItem(menu, menuIncInd, "increase    Tab");
     Menu.AddMenuItem(menu, menuDecInd, "decrease    shift-Bksp");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuIndent;
 
 
@@ -1510,7 +1453,7 @@ BEGIN
     menu := List.create(NIL);
     Menu.AddMenuItem(menu, menuUpper, "UPPER    ctrl-U");
     Menu.AddMenuItem(menu, menuLower, "lower    ctrl-L");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuCase;
 
 
@@ -1522,8 +1465,42 @@ BEGIN
     Menu.AddMenuItem(menu, menuToggleBookmark, "toggle      ctrl-F2");
     Menu.AddMenuItem(menu, menuNextBookmark,   "next        F2");
     Menu.AddMenuItem(menu, menuPrevBookmark,   "previous    shift-F2");
-    RETURN Menu.create(menu, MenuKeyDown)
+    RETURN Menu.create(menu)
 END CreateMenuBookmark;
+
+
+PROCEDURE Shortcuts;
+BEGIN
+    Menu.AddShortcut(17 + CTRL,  menuClose);
+    Menu.AddShortcut(21 + CTRL,  menuRedo);
+    Menu.AddShortcut(30 + CTRL,  menuSelectAll);
+    Menu.AddShortcut(32 + CTRL,  menuDuplicate);
+    Menu.AddShortcut(33 + CTRL,  menuFind);
+    Menu.AddShortcut(35 + CTRL,  menuFind);
+    Menu.AddShortcut(34 + CTRL,  menuGoto);
+    Menu.AddShortcut(44 + CTRL,  menuUndo);
+    Menu.AddShortcut(45 + CTRL,  menuCut);
+    Menu.AddShortcut(46 + CTRL,  menuCopy);
+    Menu.AddShortcut(47 + CTRL,  menuPaste);
+    Menu.AddShortcut(24 + CTRL,  menuOpen);
+    Menu.AddShortcut(31 + CTRL,  menuSave);
+    Menu.AddShortcut(49 + CTRL,  menuNew);
+    Menu.AddShortcut(67 + CTRL,  menuBuild);
+    Menu.AddShortcut(83 + CTRL,  menuRemove);
+    Menu.AddShortcut(22 + CTRL,  menuUpper);
+    Menu.AddShortcut(38 + CTRL,  menuLower);
+    Menu.AddShortcut(60 + CTRL,  menuToggleBookmark);
+    Menu.AddShortcut(72 + CTRL,  menuMoveUp);
+    Menu.AddShortcut(80 + CTRL,  menuMoveDown);
+    Menu.AddShortcut(83,         menuDelete);
+    Menu.AddShortcut(67,         menuRun);
+    Menu.AddShortcut(15,         menuIncInd);
+    Menu.AddShortcut(14 + SHIFT, menuDecInd);
+    Menu.AddShortcut(60 + SHIFT, menuPrevBookmark);
+    Menu.AddShortcut(60,         menuNextBookmark);
+    Menu.AddShortcut(61 + SHIFT, menuFindPrev);
+    Menu.AddShortcut(61,         menuFindNext);
+END Shortcuts;
 
 
 PROCEDURE HideSearch;
@@ -1700,6 +1677,7 @@ VAR
     middle, exit: BOOLEAN;
     menu: Menu.tMenu;
 BEGIN
+	exit := FALSE;
     btn := K.ButtonCode(middle);
     IF U.between(Tabs.btnID, btn, Tabs.btnID + maxTexts - 1) THEN
         DEC(btn, Tabs.btnID);
@@ -1724,58 +1702,45 @@ BEGIN
     		btn := 0
     	END
     END;
+
     CASE btn OF
-    |Tabs.btnLeft:  Tabs.scroll(tabs, -1); switch := TRUE; repaint
-    |Tabs.btnRight: Tabs.scroll(tabs, +1); switch := TRUE; repaint
-
     |0:
-
+    |Tabs.btnLeft, Tabs.btnRight:
+    	Tabs.scroll(tabs, btn);
+    	switch := TRUE
     |btnNo:
         exit := closing;
         closeFile(FALSE, curText);
-        repaint;
-        IF exit THEN
-            Close
-        END
+        repaint
     |btnYes:
         exit := closing;
         save(text);
         IF ~text.modified THEN
             closeFile(FALSE, curText)
         END;
-        repaint;
-        IF exit THEN
-            Close
-        END
-    |btnClose:
-        Close
-    |btnNew:
-        NewFile;
         repaint
+    |btnClose:
+    	exit := TRUE
+    |btnNew:
+        NewFile
     |btnOpen:
         OpenDial
     |btnSave:
-        save(text);
-        repaint
+        save(text)
     |btnSearch:
-        ShowSearchPanel(FALSE);
-        repaint
+        ShowSearchPanel(FALSE)
     |btnCloseSearch:
         Search
     |btnHideSearch:
         HideSearch
     |btnUndo:
-        T.undo(text);
-        repaint
+        T.undo(text)
     |btnRedo:
-        T.redo(text);
-        repaint
+        T.redo(text)
     |btnUpper:
-        T.chCase(text, TRUE);
-        repaint
+        T.chCase(text, TRUE)
     |btnLower:
-        T.chCase(text, FALSE);
-        repaint
+        T.chCase(text, FALSE)
     |btnBuild:
         Script(buildScript)
     |btnRun:
@@ -1783,24 +1748,26 @@ BEGIN
     |btnFindNext:
         IF searchText # "" THEN
             notFound := ~T.findNext(text, BKW.value);
-            SetFocus(FindEdit, FALSE);
-            repaint
+            SetFocus(FindEdit, FALSE)
         END
     |btnReplace:
         T.replace(text, replaceText, LENGTH(searchText));
-        SetFocus(FindEdit, FALSE);
-        repaint
+        SetFocus(FindEdit, FALSE)
     |btnReplaceAll:
         notFound := ~T.search(text, searchText, cs, whole);
         IF ~notFound THEN
             replaced := T.replaceAll(text, replaceText, LENGTH(searchText));
         END;
-        SetFocus(FindEdit, FALSE);
-        repaint
+        SetFocus(FindEdit, FALSE)
     |btnGoto:
-        goto;
-        repaint
-    END
+        goto
+    END;
+
+	IF exit THEN
+		Close
+	ELSE
+		repaint
+	END
 END BtnClick;
 
 
@@ -1904,8 +1871,13 @@ END MouseEvent;
 
 
 PROCEDURE Redraw (VAR resized: BOOLEAN; VAR width, height, cliWidth, cliHeight: INTEGER);
+VAR
+	onClose: BOOLEAN;
 BEGIN
-	ClickMenu;
+	onClose := (Menu.MenuItem = menuClose) OR (Menu.MenuItem = menuExit);
+	IF ~onClose THEN
+		ClickMenu
+	END;
 	K.GetSystemColors;
 	IF ~K.RolledUp() THEN
 		K.ClientSize(width, height);
@@ -1924,6 +1896,9 @@ BEGIN
 	IF SkinHeight # K.SkinHeight() THEN
 		SkinHeight := K.SkinHeight();
 		Redraw(resized, width, height, cliWidth, cliHeight)
+	END;
+	IF onClose THEN
+		ClickMenu
 	END
 END Redraw;
 
@@ -1976,6 +1951,7 @@ BEGIN
     T.init(resetTimer);
     T.setCanvas(canvas);
 
+    Menu.init(resetTimer);
     context := CreateContextMenu();
     menuFile := CreateMenuFile();
     subCurLine := CreateMenuCurLine();
@@ -2005,6 +1981,7 @@ BEGIN
     Menu.AddMainItem(mainMenu, "language", menuLanguage);
     Menu.AddMainItem(mainMenu, "program", menuProgram);
     Menu.AddMainItem(mainMenu, "tools", menuTools);
+    Shortcuts;
 
     Toolbar.create(toolbar, LEFT_PADDING + 5, toolbarTop);
     Toolbar.add(toolbar, btnNew,     2, "");
@@ -2060,7 +2037,6 @@ BEGIN
 	OD := OpenDlg.Create(draw_window, OpenDlg.topen, filePath, "");
 
     K.SetEventsMask({0, 1, 2, 5, 31});
-    Menu.init(resetTimer);
     draw_window;
     blink := Ini.blink;
 	IF blink <= 0 THEN
