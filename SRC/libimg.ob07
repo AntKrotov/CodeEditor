@@ -22,75 +22,71 @@ MODULE LibImg;
 IMPORT SYSTEM, KOSAPI, File;
 
 
-VAR
-
-    file: INTEGER;
-
-
 PROCEDURE [stdcall, "libimg.obj", ""] img_decode (data, size, options: INTEGER): INTEGER; END;
-PROCEDURE [stdcall, "libimg.obj", ""] img_to_rgb2 (data, data_rgb: INTEGER); END;
+(*PROCEDURE [stdcall, "libimg.obj", ""] img_to_rgb2 (data, data_rgb: INTEGER); END;*)
 PROCEDURE [stdcall, "libimg.obj", ""] img_scale (src, crop_x, crop_y, crop_width, crop_height, dst, scale, inter, param1, param2: INTEGER): INTEGER; END;
 PROCEDURE [stdcall, "libimg.obj", ""] img_destroy* (img: INTEGER); END;
 
-PROCEDURE GetInf*(img: INTEGER; VAR sizeX, sizeY, data: INTEGER);
+PROCEDURE GetInf* (img: INTEGER; VAR width, height, data: INTEGER);
 BEGIN
-  SYSTEM.GET(img +  4, sizeX);
-  SYSTEM.GET(img +  8, sizeY);
-  SYSTEM.GET(img + 24, data);
+	SYSTEM.GET(img +  4, width);
+	SYSTEM.GET(img +  8, height);
+	SYSTEM.GET(img + 24, data);
 END GetInf;
 
 
-PROCEDURE GetImg*(ptr, n, Width: INTEGER; VAR sizeY: INTEGER): INTEGER;
-VAR image_data, dst, x, y, type, rgb, data: INTEGER;
+PROCEDURE GetImg* (ptr, size, width: INTEGER; VAR height: INTEGER): INTEGER;
+VAR
+	image_data, type, x (*, y, rgb, data, dst*): INTEGER;
 BEGIN
-  image_data := img_decode(ptr, n, 0);
-  IF image_data # 0 THEN
-    SYSTEM.GET(image_data + 4, x);
-    SYSTEM.GET(image_data + 8, y);
-    SYSTEM.GET(image_data + 20, type);
-    IF type # 2 THEN
-      rgb := KOSAPI.malloc(x * y * 3);
-      IF rgb # 0 THEN
-        img_to_rgb2(image_data, rgb);
-        SYSTEM.GET(image_data + 24, data);
-        data := KOSAPI.free(data);
-        SYSTEM.PUT(image_data + 24, rgb);
-        SYSTEM.PUT(image_data + 20, 2)
-      ELSE
-        img_destroy(image_data);
-        image_data := 0
-      END
-    END;
-    IF (x > Width) & (image_data # 0) THEN
-      dst := img_scale(image_data, 0, 0, x, y, dst, 3, 1, Width, (y * Width) DIV x);
-      img_destroy(image_data);
-      image_data := dst
-    END;
-    IF image_data # 0 THEN
-      SYSTEM.GET(image_data +  8, sizeY)
-    END
-  END
-  RETURN image_data
+	image_data := img_decode(ptr, size, 0);
+	IF image_data # 0 THEN
+(*		SYSTEM.GET(image_data + 4, x);
+		SYSTEM.GET(image_data + 8, y);
+		SYSTEM.GET(image_data + 20, type);
+		IF type # 2 THEN
+			rgb := KOSAPI.malloc(x*y*3);
+			IF rgb # 0 THEN
+				img_to_rgb2(image_data, rgb);
+				SYSTEM.GET(image_data + 24, data);
+				data := KOSAPI.free(data);
+				SYSTEM.PUT(image_data + 24, rgb);
+				SYSTEM.PUT(image_data + 20, 2)
+			ELSE
+				img_destroy(image_data);
+				image_data := 0
+			END
+		END;
+		IF (x # width) & (image_data # 0) THEN
+			dst := img_scale(image_data, 0, 0, x, y, dst, 3, 1, width, (y*width) DIV x);
+			img_destroy(image_data);
+			image_data := dst
+		END;
+		IF image_data # 0 THEN
+			SYSTEM.GET(image_data + 8, height)
+		END*)
+		SYSTEM.GET(image_data + 4, x);
+		ASSERT(x = width);
+		SYSTEM.GET(image_data + 20, type);
+		ASSERT(type = 3); (* bpp32 *)
+		SYSTEM.GET(image_data + 8, height)
+	END
+	RETURN image_data
 END GetImg;
 
 
-PROCEDURE LoadFromFile* (FName: ARRAY OF CHAR; Width: INTEGER; VAR sizeY: INTEGER): INTEGER;
-VAR F: File.FS; n, size, res: INTEGER;
+PROCEDURE LoadFromFile* (FileName: ARRAY OF CHAR; width: INTEGER; VAR height: INTEGER): INTEGER;
+VAR
+	size, res, ptr: INTEGER;
 BEGIN
-  res := 0;
-  F := File.Open(FName);
-  IF F # NIL THEN
-    size := File.Seek(F, 0, File.SEEK_END);
-    n := File.Seek(F, 0, File.SEEK_BEG);
-    file := KOSAPI.malloc(size + 1024);
-    IF file # 0 THEN
-      n := File.Read(F, file, size);
-      res := GetImg(file, n, Width, sizeY);
-      n := KOSAPI.free(file)
-    END;
-    File.Close(F)
-  END
-  RETURN res
+	ptr := File.Load(FileName, size);
+	IF ptr # 0 THEN
+		res := GetImg(ptr, size, width, height);
+		ptr := KOSAPI.free(ptr)
+	ELSE
+		res := 0
+	END
+	RETURN res
 END LoadFromFile;
 
 

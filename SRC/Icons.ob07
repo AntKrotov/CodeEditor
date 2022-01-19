@@ -20,106 +20,86 @@
 MODULE Icons;
 
 IMPORT
-    LibImg, K := KolibriOS, Graph, SYSTEM;
+	LibImg, K := KolibriOS, Graph, SYSTEM, KOSAPI;
 
 CONST
-    fileName = "/sys/Icons16.png";
-    SIZE* = 18;
+	fileName = "/sys/Icons16.png";
+	SIZE* = 18;
 
 VAR
-    source: INTEGER;
+	source: INTEGER;
 
-
+(*
 PROCEDURE copy (src, dst: INTEGER);
 VAR
-    src_sizeX, src_sizeY, dst_sizeX, dst_sizeY,
-    src_data, dst_data: INTEGER;
+	src_width, src_height,
+	dst_width, dst_height,
+	src_data, dst_data: INTEGER;
 BEGIN
-    LibImg.GetInf(src, src_sizeX, src_sizeY, src_data);
-    LibImg.GetInf(dst, dst_sizeX, dst_sizeY, dst_data);
-    ASSERT(src_sizeX = dst_sizeX);
-    ASSERT(src_sizeY = dst_sizeY);
-    SYSTEM.MOVE(src_data, dst_data, src_sizeX*src_sizeY*3)
+	LibImg.GetInf(src, src_width, src_height, src_data);
+	LibImg.GetInf(dst, dst_width, dst_height, dst_data);
+	ASSERT(src_width = dst_width);
+	ASSERT(src_height = dst_height);
+	SYSTEM.MOVE(src_data, dst_data, src_width*src_height*4)
 END copy;
-
+*)
 
 PROCEDURE load (): INTEGER;
 VAR
-    y: INTEGER;
+	height: INTEGER;
 BEGIN
-    RETURN LibImg.LoadFromFile(fileName, SIZE, y)
+	RETURN LibImg.LoadFromFile(fileName, SIZE, height)
 END load;
 
 
 PROCEDURE draw* (icons, n, x, y: INTEGER);
 VAR
-    sizeX, sizeY, data: INTEGER;
+	width, height, data: INTEGER;
 BEGIN
-    LibImg.GetInf(icons, sizeX, sizeY, data);
-    K.DrawImage(data + SIZE*SIZE*3*n, SIZE, SIZE, x, y)
+	LibImg.GetInf(icons, width, height, data);
+	KOSAPI.sysfunc7(65, data + SIZE*SIZE*4*n, SIZE*65536 + SIZE, x*65536 + y, 32, 0, 0)
 END draw;
-
-
-PROCEDURE gray (icons: INTEGER);
-VAR
-    sizeX, sizeY, data, x, y: INTEGER;
-    b, g, r, gr: BYTE;
-BEGIN
-    LibImg.GetInf(icons, sizeX, sizeY, data);
-    FOR y := 0 TO sizeY - 1 DO
-        FOR x := 0 TO sizeX - 1 DO
-            SYSTEM.GET8(data, b);
-            SYSTEM.GET8(data + 1, g);
-            SYSTEM.GET8(data + 2, r);
-            gr := (r + g + b) DIV 3;
-            SYSTEM.PUT8(data, gr);
-            SYSTEM.PUT8(data + 1, gr);
-            SYSTEM.PUT8(data + 2, gr);
-            INC(data, 3);
-        END
-    END
-END gray;
 
 
 PROCEDURE iconsBackColor (icons: INTEGER; BackColor: INTEGER);
 VAR
-    sizeX, sizeY, data, x, y: INTEGER;
-    b, g, r: BYTE;
+	width, height, data, x, y, pix: INTEGER;
+	b, g, r, gr: BYTE;
 BEGIN
-    LibImg.GetInf(icons, sizeX, sizeY, data);
-    FOR y := 0 TO sizeY - 1 DO
-        FOR x := 0 TO sizeX - 1 DO
-            SYSTEM.GET8(data, b);
-            SYSTEM.GET8(data + 1, g);
-            SYSTEM.GET8(data + 2, r);
-            IF b + g + r = 765 THEN
-            	Graph.getRGB(BackColor, r, g, b)
-            END;
-            SYSTEM.PUT8(data, b);
-            SYSTEM.PUT8(data + 1, g);
-            SYSTEM.PUT8(data + 2, r);
-            INC(data, 3);
-        END
-    END
+	LibImg.GetInf(icons, width, height, data);
+	FOR y := 0 TO height - 1 DO
+		FOR x := 0 TO width - 1 DO
+			SYSTEM.GET32(data, pix);
+			Graph.getRGB(pix, r, g, b);
+			gr := (r + g + b) DIV 3;
+			IF BackColor = -1 THEN
+				pix := gr + 256*gr + 65536*gr
+			ELSIF gr = 255 THEN
+				pix := BackColor
+			END;
+			SYSTEM.PUT32(data, pix);
+			INC(data, 4)
+		END
+	END
 END iconsBackColor;
 
 
 PROCEDURE get* (VAR icons, grayIcons: INTEGER; BackColor: INTEGER);
 BEGIN
-    IF source = 0 THEN
-        source := load();
-        icons := load();
-        grayIcons := load()
-    ELSE
-        copy(source, icons);
-        copy(source, grayIcons)
-    END;
-    gray(grayIcons);
-    iconsBackColor(icons, BackColor);
-    iconsBackColor(grayIcons, BackColor)
+	IF source = 0 THEN
+		source := load();
+		icons := load();
+		grayIcons := load();
+		iconsBackColor(grayIcons, -1);
+		iconsBackColor(grayIcons, BackColor);
+		iconsBackColor(icons, BackColor)
+	(*ELSE
+		copy(source, icons);
+		copy(source, grayIcons)*)
+	END;
 END get;
 
 
 BEGIN
-    source := 0
+	source := 0
 END Icons.
