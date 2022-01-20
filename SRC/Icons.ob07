@@ -20,7 +20,7 @@
 MODULE Icons;
 
 IMPORT
-	LibImg, K := KolibriOS, Graph, SYSTEM, KOSAPI;
+	Graph, File, SYSTEM, KOSAPI;
 
 CONST
 	fileName = "/sys/Icons16.png";
@@ -44,11 +44,48 @@ BEGIN
 END copy;
 *)
 
+PROCEDURE [stdcall, "libimg.obj", ""] img_decode (data, size, options: INTEGER): INTEGER; END;
+PROCEDURE [stdcall, "Libimg.obj", ""] img_convert (src, dst, dst_type, flags, param: INTEGER): INTEGER; END;
+PROCEDURE [stdcall, "Libimg.obj", ""] img_destroy (img: INTEGER); END;
+
+PROCEDURE GetInf (img: INTEGER; VAR width, height, data: INTEGER);
+BEGIN
+	SYSTEM.GET(img +  4, width);
+	SYSTEM.GET(img +  8, height);
+	SYSTEM.GET(img + 24, data);
+END GetInf;
+
+
+PROCEDURE GetImg* (ptr, size: INTEGER): INTEGER;
+VAR
+	image_data, dst, x, type: INTEGER;
+BEGIN
+	image_data := img_decode(ptr, size, 0);
+	IF image_data # 0 THEN
+		SYSTEM.GET(image_data + 4, x);
+		ASSERT(x = SIZE);
+		SYSTEM.GET(image_data + 20, type);
+		IF type # 3 THEN
+			dst := img_convert(image_data, 0, 3, 0, 0);
+			img_destroy(image_data);
+			image_data := dst
+		END
+	END
+	RETURN image_data
+END GetImg;
+
+
 PROCEDURE load (): INTEGER;
 VAR
-	height: INTEGER;
+	size, res, ptr: INTEGER;
 BEGIN
-	RETURN LibImg.LoadFromFile(fileName, SIZE, height)
+	res := 0;
+	ptr := File.Load(fileName, size);
+	IF ptr # 0 THEN
+		res := GetImg(ptr, size);
+		ptr := KOSAPI.free(ptr)
+	END
+	RETURN res
 END load;
 
 
@@ -56,7 +93,7 @@ PROCEDURE draw* (icons, n, x, y: INTEGER);
 VAR
 	width, height, data: INTEGER;
 BEGIN
-	LibImg.GetInf(icons, width, height, data);
+	GetInf(icons, width, height, data);
 	KOSAPI.sysfunc7(65, data + SIZE*SIZE*4*n, SIZE*65536 + SIZE, x*65536 + y, 32, 0, 0)
 END draw;
 
@@ -66,7 +103,7 @@ VAR
 	width, height, data, x, y, pix: INTEGER;
 	b, g, r, gr: BYTE;
 BEGIN
-	LibImg.GetInf(icons, width, height, data);
+	GetInf(icons, width, height, data);
 	FOR y := 0 TO height - 1 DO
 		FOR x := 0 TO width - 1 DO
 			SYSTEM.GET32(data, pix);
