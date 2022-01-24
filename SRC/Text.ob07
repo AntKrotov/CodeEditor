@@ -66,7 +66,7 @@ TYPE
         scroll: tPoint;
         CurX: INTEGER;
         smallChange: INTEGER;
-        modified*: BOOLEAN;
+        modified*, smallMove: BOOLEAN;
         edition*: tGuard;
         comments, numbers*, guard,
         search, cs, whole: BOOLEAN;
@@ -1948,6 +1948,9 @@ BEGIN
             str := ""
         END
     END;
+    IF text.searchText # str THEN
+    	text.smallMove := FALSE
+    END;
     IF search(text, str, Lang.isCS(text.lang), TRUE) THEN END
 END wordSel;
 
@@ -1977,12 +1980,16 @@ END getWordPos;
 PROCEDURE key* (text: tText; code: INTEGER; shift, ctrl: BOOLEAN);
 VAR
 	n, wPos: INTEGER;
+	scrX, scrY: INTEGER;
+	resSel: BOOLEAN;
 BEGIN
+	resSel := FALSE;
     IF shift THEN
         setSelect(text)
     ELSE
         IF (33 <= code) & (code <= 40) THEN
         	IF ~(((code = 38) OR (code = 40)) & ctrl) THEN
+        		resSel := selected(text);
 	            resetSelect(text)
             END
         END
@@ -2023,6 +2030,8 @@ BEGIN
         IF (text.cursor.X = 0) & (text.curLine.prev # NIL) THEN
             SetPos(text, text.curLine.prev(tLine).length, text.cursor.Y - 1)
         ELSE
+        	scrX := text.scroll.X;
+        	scrY := text.scroll.Y;
         	IF ctrl THEN
         		wPos := 0;
         		REPEAT
@@ -2032,7 +2041,8 @@ BEGIN
 				move(text, n - text.cursor.X)
         	ELSE
             	move(text, -1)
-            END
+            END;
+            text.smallMove := (scrX = text.scroll.X) & (scrY = text.scroll.Y) & ~resSel
         END
     |38:
         IF ctrl THEN
@@ -2044,11 +2054,14 @@ BEGIN
         IF (text.cursor.X = text.curLine.length) & (text.curLine.next # NIL) THEN
             SetPos(text, 0, text.cursor.Y + 1)
         ELSE
+        	scrX := text.scroll.X;
+        	scrY := text.scroll.Y;
         	IF ctrl THEN
 				move(text, getWordPos(text.curLine, text.cursor.X) - text.cursor.X)
         	ELSE
             	move(text, 1)
-        	END
+        	END;
+        	text.smallMove := (scrX = text.scroll.X) & (scrY = text.scroll.Y) & ~resSel
         END
     |40:
         IF ctrl THEN
@@ -2245,7 +2258,9 @@ BEGIN
     guard.selected := text.select = text.select2;
 
     G.SetColor(canvas, colors.back);
-    G.clear(canvas);
+    IF ~text.smallMove THEN
+    	G.clear(canvas)
+    END;
     wNum := charWidth;
     IF text.numbers THEN
         numWidth := U.lg10(text.count) + 2;
@@ -2257,9 +2272,19 @@ BEGIN
     getSelect(text, selBeg, selEnd);
     y := padding.top + inter DIV 2;
     n := text.scroll.Y;
-    line := getLine2(text, n);
-    firstLine := line;
-    cnt := 0;
+    firstLine := getLine2(text, n);
+    IF text.smallMove THEN
+    	line := text.curLine;
+    	cnt := textsize.Y - 1;
+    	y := y + charHeight*(text.cursor.Y - text.scroll.Y);
+    	G.SetColor(canvas, colors.back);
+    	G.FillRect(canvas, padding.left - 2, y - inter DIV 2, size.X - 1, y - inter DIV 2 + charHeight);
+    	n := text.cursor.Y
+    ELSE
+	    line := firstLine;
+    	cnt := 0
+    END;
+
     WHILE (line # NIL) & (cnt < textsize.Y) DO
         backColor := colors.back;
         IF (line = text.curLine) & ~selected(text) THEN
@@ -2289,6 +2314,7 @@ BEGIN
         INC(n);
         INC(cnt)
     END;
+
     G.SetColor(canvas, colors.numback);
     G.FillRect(canvas, 0, 0, padding.left - pad_left (*+ 1*), size.Y - 1);
     line := firstLine;
@@ -2316,17 +2342,18 @@ BEGIN
     END;
 
     IF text.searchText # "" THEN
-        cnt := 0;
-        line := firstLine;
-        lastLine := line;
-        WHILE (line # NIL) & (cnt < textsize.Y) DO
-            lastLine := line;
-            NextLine(line);
-            INC(cnt)
+    	IF text.smallMove THEN
+    		firstLine := text.curLine;
+    		lastLine := firstLine
+    	ELSE
+    	    lastLine := getLine2(text, text.scroll.Y + textsize.Y - 1)
         END;
         p := text.foundList.first(Search.tPos);
         WHILE p # NIL DO
-            y := padding.top + inter DIV 2;
+        	y := padding.top + inter DIV 2;
+        	IF text.smallMove THEN
+        		y := y + charHeight*(text.cursor.Y - text.scroll.Y)
+            END;
             IF (firstLine.pos <= p.pos) & (p.pos <= lastLine.pos + lastLine.length) THEN
                 line := firstLine;
                 WHILE (line.pos <= p.pos) & (line # lastLine) DO
@@ -2350,6 +2377,8 @@ BEGIN
             p := p.next(Search.tPos)
         END
     END;
+
+    text.smallMove := FALSE;
 
     IF text.foundSel > 0 THEN
         x := (text.cursor.X - text.scroll.X)*charWidth + padding.left;
@@ -2392,6 +2421,7 @@ BEGIN
     setPadding(padding.left, padding.top);
     text.curLine := NIL;
     text.modified := FALSE;
+    text.smallMove := FALSE;
     text.comments := TRUE;
     text.search := TRUE;
     text.cs := FALSE;
