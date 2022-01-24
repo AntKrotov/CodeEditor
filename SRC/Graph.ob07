@@ -322,7 +322,7 @@ END CreateCanvas;
 PROCEDURE destroy* (VAR canvas: tCanvas);
 BEGIN
     IF canvas # NIL THEN
-        canvas.bitmap := KOSAPI.free(canvas.bitmap);
+        canvas.bitmap := KOSAPI.free(canvas.bitmap - 8);
         DISPOSE(canvas)
     END
 END destroy;

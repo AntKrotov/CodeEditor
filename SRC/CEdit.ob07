@@ -28,7 +28,7 @@ IMPORT
     RW, Ini, EB := EditBox, Tabs, Toolbar, SB := StatusBar;
 
 CONST
-    HEADER = "CEdit (20-jan-2022)";
+    HEADER = "CEdit (22-jan-2022)";
 
     ShellFilter = "";
     EditFilter = "SH|INC|TXT|ASM|OB07|C|CPP|H|PAS|PP|LUA|INI|JSON";
@@ -370,6 +370,14 @@ BEGIN
 END DrawScroll;
 
 
+PROCEDURE drawText;
+BEGIN
+	G.SetColor(canvas, K.colors.line);
+	G.VLine(canvas, 0, 0, canvas.height - 1);
+	G.DrawCanvas(canvas, LEFT, TOP)
+END drawText;
+
+
 PROCEDURE repaint;
 VAR
     width, height, scrollX, scrollY: INTEGER;
@@ -403,10 +411,7 @@ BEGIN
 	        CheckBox.draw(CS);
 	        CheckBox.draw(WH);
         END;
-
-		G.SetColor(canvas, K.colors.line);
-		G.VLine(canvas, 0, 0, canvas.height - 1);
-        G.DrawCanvas(canvas, LEFT, TOP);
+        drawText;
         NotFound;
         Replaced;
         Toolbar.enable(toolbar, btnSave,  text.modified);
@@ -2050,8 +2055,8 @@ BEGIN
     	CurrentTime := K.GetTickCount();
     	IF (CurrentTime - CursorTime > blink) & (blink > 0) & timerEnabled & ~K.RolledUp() THEN
     		CursorTime := CurrentTime;
-    		T.toggleCursor;
-    		repaint
+    		T.cursor(text);
+    		drawText
     	END;
 
         CASE K.EventTimeout(10) OF
